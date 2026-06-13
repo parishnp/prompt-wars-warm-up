@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrepMaster AI - Dynamic Cooking To-Do & Meal Planner</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-mode">
+    <div class="app-container">
+        <!-- Sidebar / Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="chef-hat"></i>
+                </div>
+                <div>
+                    <h1>PrepMaster <span class="accent-text">AI</span></h1>
+                    <p class="subtitle">Your Day, Your Budget, Your Cooking To-Do List</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="theme-toggle" class="btn-icon" title="Toggle Theme">
+                    <i data-lucide="sun"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <!-- Sidebar: User Constraints Intake -->
+            <section class="panel constraints-panel">
+                <div class="panel-header">
+                    <i data-lucide="sliders"></i>
+                    <h2>Daily Constraints</h2>
+                </div>
+                <form id="constraints-form" class="constraints-form">
+                    <!-- Dietary Preferences -->
+                    <div class="form-group">
+                        <label for="diet-select">Dietary Profile</label>
+                        <div class="select-wrapper">
+                            <select id="diet-select">
+                                <option value="anything">Anything (No Restrictions)</option>
+                                <option value="vegetarian">Vegetarian</option>
+                                <option value="vegan">Vegan</option>
+                                <option value="gluten-free">Gluten-Free</option>
+                                <option value="keto">Keto</option>
+                                <option value="mediterranean">Mediterranean</option>
+                            </select>
+                            <i data-lucide="chevron-down" class="select-icon"></i>
+                        </div>
+                    </div>
+
+                    <!-- Daily Budget Slider -->
+                    <div class="form-group">
+                        <div class="label-with-val">
+                            <label for="budget-input">Daily Budget</label>
+                            <span class="value-display" id="budget-value">$20</span>
+                        </div>
+                        <div class="range-container">
+                            <input type="range" id="budget-input" min="10" max="60" value="20" step="5">
+                            <div class="range-ticks">
+                                <span>$10</span>
+                                <span>$30</span>
+                                <span>$60</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Availability per Meal -->
+                    <div class="form-group">
+                        <label>Max Prep Time (Minutes)</label>
+                        <div class="time-inputs">
+                            <div class="time-box">
+                                <span class="time-label">Breakfast</span>
+                                <input type="number" id="time-breakfast" min="5" max="60" value="15">
+                            </div>
+                            <div class="time-box">
+                                <span class="time-label">Lunch</span>
+                                <input type="number" id="time-lunch" min="5" max="90" value="20">
+                            </div>
+                            <div class="time-box">
+                                <span class="time-label">Dinner</span>
+                                <input type="number" id="time-dinner" min="5" max="120" value="30">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pantry Inventory Tags -->
+                    <div class="form-group">
+                        <label for="pantry-input">In My Pantry / Fridge</label>
+                        <div class="tag-input-container">
+                            <div id="pantry-tags" class="tag-list">
+                                <!-- Tags will be dynamically generated -->
+                            </div>
+                            <div class="input-btn-group">
+                                <input type="text" id="pantry-input" placeholder="e.g., rice, olive oil, salt...">
+                                <button type="button" id="add-pantry-btn" class="btn btn-secondary">Add</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="generate-btn" class="btn btn-primary btn-full">
+                        <i data-lucide="sparkles"></i>
+                        <span>Generate Custom Cooking Day</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Dashboard Area -->
+            <section class="dashboard-panel">
+                <!-- Metrics Bar -->
+                <div class="metrics-grid">
+                    <div class="metric-card" id="budget-metric">
+                        <div class="metric-info">
+                            <span class="metric-label">Estimated Day Cost</span>
+                            <h3 class="metric-value" id="total-cost-display">$0.00</h3>
+                        </div>
+                        <div class="metric-icon budget-ok">
+                            <i data-lucide="wallet"></i>
+                        </div>
+                        <div class="budget-progress-container">
+                            <div class="budget-progress-bar" id="budget-progress" style="width: 0%"></div>
+                        </div>
+                        <span class="metric-subtext" id="budget-status-text">Set constraints and generate</span>
+                    </div>
+
+                    <div class="metric-card" id="tasks-metric">
+                        <div class="metric-info">
+                            <span class="metric-label">Cooking Tasks Done</span>
+                            <h3 class="metric-value" id="task-completion-display">0%</h3>
+                        </div>
+                        <div class="metric-icon">
+                            <i data-lucide="check-square"></i>
+                        </div>
+                        <div class="budget-progress-container">
+                            <div class="budget-progress-bar" id="task-progress" style="width: 0%"></div>
+                        </div>
+                        <span class="metric-subtext" id="task-status-text">0 of 0 tasks completed</span>
+                    </div>
+
+                    <div class="metric-card" id="grocery-metric">
+                        <div class="metric-info">
+                            <span class="metric-label">Grocery Items to Buy</span>
+                            <h3 class="metric-value" id="grocery-count-display">0</h3>
+                        </div>
+                        <div class="metric-icon">
+                            <i data-lucide="shopping-cart"></i>
+                        </div>
+                        <div class="budget-progress-container" style="visibility: hidden;">
+                            <div class="budget-progress-bar"></div>
+                        </div>
+                        <span class="metric-subtext" id="grocery-status-text">All items in pantry!</span>
+                    </div>
+                </div>
+
+                <!-- Main Column: Meal Plan & To-Do List -->
+                <div class="dashboard-grid">
+                    <!-- Left: Meal Cards -->
+                    <div class="dashboard-col">
+                        <div class="section-title">
+                            <i data-lucide="utensils"></i>
+                            <h3>Your Custom Meal Plan</h3>
+                        </div>
+
+                        <div id="meals-container" class="meals-list">
+                            <!-- Placeholder State -->
+                            <div class="placeholder-state">
+                                <i data-lucide="chef-hat" class="large-icon pulse"></i>
+                                <h4>Ready to build your menu?</h4>
+                                <p>Fill out your daily constraints on the left and tap "Generate Custom Cooking Day" to build an AI-powered meal path.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Unified Checklist -->
+                    <div class="dashboard-col">
+                        <div class="section-title">
+                            <i data-lucide="calendar"></i>
+                            <h3>Unified Cooking To-Do List</h3>
+                        </div>
+
+                        <div id="todo-container" class="todo-list-card">
+                            <div class="todo-header">
+                                <div class="timeline-summary">
+                                    <i data-lucide="clock"></i>
+                                    <span id="total-prep-time">Total Active Prep: 0 mins</span>
+                                </div>
+                                <button id="optimize-schedule-btn" class="btn btn-sm btn-secondary" style="display:none;">
+                                    <i data-lucide="refresh-cw"></i> Parallelize Prep
+                                </button>
+                            </div>
+                            <div id="todo-items-list" class="todo-items-list">
+                                <!-- Placeholder State -->
+                                <div class="placeholder-state">
+                                    <i data-lucide="list-todo" class="large-icon"></i>
+                                    <h4>Your checklist will appear here</h4>
+                                    <p>Once generated, all recipe preparation and cooking tasks will be merged into a single timeline.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Grocery List -->
+                <div class="grocery-section" id="grocery-section-card" style="display:none;">
+                    <div class="section-title">
+                        <i data-lucide="shopping-bag"></i>
+                        <h3>Smart Grocery Shopping List</h3>
+                    </div>
+                    <div class="grocery-card">
+                        <div class="grocery-header">
+                            <p>We've combined ingredients from all meals and filtered out items in your pantry.</p>
+                            <div class="grocery-actions">
+                                <button id="copy-grocery-btn" class="btn btn-sm btn-secondary">
+                                    <i data-lucide="copy"></i> Copy List
+                                </button>
+                            </div>
+                        </div>
+                        <div id="grocery-categories" class="grocery-grid-list">
+                            <!-- Dynamically loaded categories -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Ingredient Substitution Modal / Drawer -->
+    <div id="sub-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i data-lucide="git-compare"></i> Smart Substitution</h3>
+                <button id="close-modal-btn" class="btn-icon"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-intro">Looking to swap <strong id="sub-ing-name">Ingredient</strong>? Select a replacement option below:</p>
+                
+                <div class="selected-ing-detail">
+                    <span class="ing-detail-label">Recipe:</span>
+                    <span id="sub-recipe-context" class="ing-detail-val">All Recipes</span>
+                    <span class="ing-detail-label">Current Cost:</span>
+                    <span id="sub-current-cost" class="ing-detail-val">$0.00</span>
+                </div>
+
+                <div class="sub-options" id="sub-options-list">
+                    <!-- Substitute options will go here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script loading -->
+    <script src="app.js"></script>
+</body>
+</html>
