@@ -5,17 +5,38 @@ import { ChefHat, AlertTriangle, ShoppingCart } from "lucide-react";
 import IntakeForm, { type IntakePayload } from "@/components/IntakeForm";
 import TimelineVisualizer from "@/components/TimelineVisualizer";
 import MealCard from "@/components/MealCard";
+import Checklist from "@/components/Checklist";
+import SubstitutionDrawer from "@/components/SubstitutionDrawer";
 import { parseAgendaEvents } from "@/lib/parser";
-import type { PlanResponse } from "@/lib/types";
+import { useLocalStorage } from "@/lib/useLocalStorage";
+import type { Meal, PlanResponse } from "@/lib/types";
+
+interface DrawerState {
+  open: boolean;
+  ingredient: string | null;
+  mealId: string | null;
+}
 
 export default function Home() {
-  const [plan, setPlan] = useState<PlanResponse | null>(null);
-  const [pantry, setPantry] = useState<string[]>([]);
-  const [agenda, setAgenda] = useState("");
+  // Persisted across refreshes via localStorage.
+  const [plan, setPlan] = useLocalStorage<PlanResponse | null>("pm.plan", null);
+  const [pantry, setPantry] = useLocalStorage<string[]>("pm.pantry", []);
+  const [agenda, setAgenda] = useLocalStorage<string>("pm.agenda", "");
+  const [completed, setCompleted] = useLocalStorage<Record<string, boolean>>(
+    "pm.completed",
+    {},
+  );
+
+  // Transient UI state (not persisted).
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<DrawerState>({
+    open: false,
+    ingredient: null,
+    mealId: null,
+  });
 
-  // Parse commitments from the submitted agenda for the timeline.
+  // Parse commitments from the agenda for the timeline.
   const events = useMemo(() => parseAgendaEvents(agenda), [agenda]);
 
   async function handleSubmit(payload: IntakePayload) {
@@ -39,12 +60,56 @@ export default function Home() {
         return;
       }
       setPlan(data as PlanResponse);
+      setCompleted({}); // fresh plan -> reset checklist progress
     } catch {
       setError("Could not reach the planner. Check your connection and try again.");
       setPlan(null);
     } finally {
       setLoading(false);
     }
+  }
+
+  function toggleTask(id: string) {
+    setCompleted((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function openSubstitution(ingredient: string, meal: Meal) {
+    setDrawer({ open: true, ingredient, mealId: meal.id });
+  }
+
+  function closeDrawer() {
+    setDrawer((d) => ({ ...d, open: false }));
+  }
+
+  /** Replace an ingredient name in the affected meal and the grocery list. */
+  function applySubstitution(
+    original: string,
+    replacement: string,
+    mealId: string | null,
+  ) {
+    const matches = (name: string) =>
+      name.trim().toLowerCase() === original.trim().toLowerCase();
+
+    setPlan((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        meals: prev.meals.map((meal) =>
+          mealId && meal.id !== mealId
+            ? meal
+            : {
+                ...meal,
+                ingredients: meal.ingredients.map((ing) =>
+                  matches(ing.name) ? { ...ing, name: replacement } : ing,
+                ),
+              },
+        ),
+        groceryList: prev.groceryList.map((item) =>
+          matches(item.name) ? { ...item, name: replacement } : item,
+        ),
+      };
+    });
+    closeDrawer();
   }
 
   return (
@@ -100,7 +165,12 @@ export default function Home() {
               {plan ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {plan.meals.map((meal) => (
-                    <MealCard key={meal.id} meal={meal} pantry={pantry} />
+                    <MealCard
+                      key={meal.id}
+                      meal={meal}
+                      pantry={pantry}
+                      onIngredientClick={openSubstitution}
+                    />
                   ))}
                 </div>
               ) : (
@@ -117,6 +187,15 @@ export default function Home() {
                 </div>
               )}
             </section>
+
+            {/* Unified checklist + voice mode */}
+            {plan && (
+              <Checklist
+                tasks={plan.todoList}
+                completed={completed}
+                onToggle={toggleTask}
+              />
+            )}
 
             {/* Grocery summary */}
             {plan && plan.groceryList.length > 0 && (
@@ -150,6 +229,15 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Ingredient substitution slide-over */}
+      <SubstitutionDrawer
+        open={drawer.open}
+        ingredientName={drawer.ingredient}
+        mealId={drawer.mealId}
+        onClose={closeDrawer}
+        onSubstitute={applySubstitution}
+      />
     </main>
   );
 }
